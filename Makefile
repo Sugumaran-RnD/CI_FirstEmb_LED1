@@ -20,7 +20,7 @@ all: $(ELF)
 
 # Build firmware for ARM target
 $(ELF): $(OBJ)
-	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^
+	$(CC_ARM) $(CFLAGS_ARM) -nostdlib -o $@ $^
 
 # Compile object files
 %.o: %.c
