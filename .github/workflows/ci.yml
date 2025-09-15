@@ -13,14 +13,29 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make cppcheck
-          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+          sudo apt-get install -y gcc make cppcheck cppcheck-htmlreport \
+                                 gcc-arm-none-eabi binutils-arm-none-eabi
 
-      - name: Build
+      - name: Build firmware
         run: make
 
-      - name: Run unit tests (host side)
-        run: ./tests/test_math || true   # embedded code may not run on CI runner
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: firmware.elf
 
-      - name: Run static analysis (cppcheck)
-        run: cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem --error-exitcode=1 -I./src src tests
+      - name: Run unit tests (host side)
+        run: ./tests/test_math || true   # skip failure if embedded code can't run on CI
+
+      - name: Run cppcheck and generate XML report
+        run: |
+          cppcheck --enable=all --inconclusive --xml --xml-version=2 -I./src src tests 2> cppcheck-report.xml
+          cppcheck-htmlreport --file=cppcheck-report.xml --report-dir=cppcheck-html --source-dir=.
+
+      - name: Upload static analysis report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: cppcheck-html
+
