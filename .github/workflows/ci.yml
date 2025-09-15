@@ -13,8 +13,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc make cppcheck python3 \
+          sudo apt-get install -y gcc make cppcheck python3 python3-pip \
                                  gcc-arm-none-eabi binutils-arm-none-eabi
+          pip install cppcheck-htmlreport
 
       - name: Build firmware
         run: make
@@ -31,7 +32,7 @@ jobs:
       - name: Run cppcheck and generate XML + HTML report
         run: |
           cppcheck --enable=all --inconclusive --xml --xml-version=2 -I./src src tests 2> cppcheck-report.xml
-          python3 /usr/share/cppcheck/htmlreport/cppcheck-htmlreport \
+          cppcheck-htmlreport \
             --file=cppcheck-report.xml \
             --report-dir=cppcheck-html \
             --source-dir=.
