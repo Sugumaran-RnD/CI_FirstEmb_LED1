@@ -40,3 +40,19 @@ jobs:
         with:
           name: cppcheck-html-report
           path: cppcheck-html-report
+          
+      - name: Install ESP-IDF
+        run: |
+          git clone --recursive https://github.com/espressif/esp-idf.git
+          ./esp-idf/install.sh
+          . ./esp-idf/export.sh
+      
+      - name: Build ESP32 firmware
+        run: idf.py build
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-firmware
+          path: build/*.bin
+
