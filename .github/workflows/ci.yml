@@ -1,4 +1,4 @@
-name: Cppcheck Analysis
+name: CI-CD for ESP32
 
 on:
   push:
@@ -7,6 +7,9 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # -------------------------------
+  # 1. Static Analysis (Cppcheck)
+  # -------------------------------
   cppcheck:
     runs-on: ubuntu-latest
 
@@ -19,7 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc make cppcheck python3 \
                                  gcc-arm-none-eabi binutils-arm-none-eabi wget
-          # Install cppcheck-htmlreport manually (not available via pip)
+          # Install cppcheck-htmlreport manually
           wget https://raw.githubusercontent.com/danmar/cppcheck/main/htmlreport/cppcheck-htmlreport \
                -O /usr/local/bin/cppcheck-htmlreport
           chmod +x /usr/local/bin/cppcheck-htmlreport
@@ -40,19 +43,33 @@ jobs:
         with:
           name: cppcheck-html-report
           path: cppcheck-html-report
-          
+
+  # -------------------------------
+  # 2. Build & Deploy on ESP32 (CD)
+  # -------------------------------
+  build-and-deploy:
+    runs-on: self-hosted
+    needs: cppcheck   # Run only after cppcheck passes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install ESP-IDF
         run: |
-          git clone --recursive https://github.com/espressif/esp-idf.git
-          ./esp-idf/install.sh
-          . ./esp-idf/export.sh
-      
+          if [ ! -d "$HOME/esp-idf" ]; then
+            git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git $HOME/esp-idf
+            cd $HOME/esp-idf
+            ./install.sh
+          fi
+          echo ". $HOME/esp-idf/export.sh" >> $GITHUB_ENV
+
       - name: Build ESP32 firmware
-        run: idf.py build
+        run: |
+          . $HOME/esp-idf/export.sh
+          idf.py build
 
-      - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: esp32-firmware
-          path: build/*.bin
-
+      - name: Flash ESP32
+        run: |
+          . $HOME/esp-idf/export.sh
+          idf.py -p /dev/ttyUSB0 flash
